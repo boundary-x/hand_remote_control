@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>바운더리엑스 AI 핸즈포즈 RC 컨트롤러</title>
+  <title>바운더리엑스 AI 2인용 RC 컨트롤러</title>
   
   <link rel="icon" href="https://raw.githubusercontent.com/boundary-x/ai_teachable_machine/refs/heads/main/Favicon.png"/> 
   <link rel="X-icon" href="https://raw.githubusercontent.com/boundary-x/ai_teachable_machine/refs/heads/main/Favicon.png"/> 
@@ -18,7 +18,7 @@
   <header>
     <div class="title">
       <img src="https://raw.githubusercontent.com/boundary-x/ai_voice_recognition/refs/heads/main/boundaryx_logo.png" alt="Logo">
-      AI 핸드포즈 <span class="white-badge">RC 컨트롤러</span>
+      AI 핸드포즈 <span class="white-badge">2인용 RC 컨트롤러</span>
     </div>
     <div class="header-right">
         <span id="model-status" class="status-indicator loading">모델 로딩 중...</span>
@@ -30,12 +30,16 @@
       
       <div class="panel info-panel">
         <h3>📘 사용 방법</h3>
-        <ol class="manual-list">
-          <li><strong>기기 찾기</strong> 버튼을 눌러 마이크로비트를 연결하세요.</li>
-          <li>카메라에 <strong>양손</strong>을 보여주세요.</li>
-          <li>화면 중앙 선을 기준으로 <strong>왼쪽/오른쪽</strong> 모터가 제어됩니다.</li>
-          <li>손의 <strong>높이</strong>로 속도와 방향을 조절하세요.</li>
-        </ol>
+        <ul class="manual-list">
+          <li><strong>기기 찾기</strong> 버튼으로 블루투스를 연결하세요.</li>
+          <li>화면의 중앙 선을 기준으로 <strong>왼쪽/오른쪽</strong>에 각각 한 명씩 섭니다.</li>
+          <li><strong>보자기/주먹</strong>을 쥐어 RC카를 조종하세요.</li>
+          <hr style="margin:8px 0; border:0; border-bottom:1px solid #ddd;">
+          <li>🖐️ 보자기 + 🖐️ 보자기 = <strong>전진 (forward)</strong></li>
+          <li>✊ 주먹 + 🖐️ 보자기 = <strong>우회전 (right)</strong></li>
+          <li>🖐️ 보자기 + ✊ 주먹 = <strong>좌회전 (left)</strong></li>
+          <li>✊ 주먹 + ✊ 주먹 = <strong>후진 (backward)</strong></li>
+        </ul>
       </div>
 
       <div class="panel">
@@ -46,20 +50,24 @@
       </div>
 
       <div class="panel">
-        <h3>🎮 실시간 모터 출력</h3>
+        <h3>🎮 현재 상태</h3>
         <div class="monitor-row">
-            <span class="motor-label">LEFT</span>
-            <span id="log-left" class="motor-value">Stop</span>
+            <span class="motor-label">Player 1 (Left)</span>
+            <span id="log-left" class="motor-value">인식 안됨 ❌</span>
         </div>
         <div class="monitor-row">
-            <span class="motor-label">RIGHT</span>
-            <span id="log-right" class="motor-value">Stop</span>
+            <span class="motor-label">Player 2 (Right)</span>
+            <span id="log-right" class="motor-value">인식 안됨 ❌</span>
+        </div>
+        <div class="monitor-row" style="background:#e3f2fd; border-color:#90caf9; margin-top: 12px;">
+            <span class="motor-label">전송 명령어</span>
+            <span id="log-command" class="motor-value" style="color:#1976d2; font-size: 1.2rem;">STOP</span>
         </div>
       </div>
       
       <div class="debug-panel">
-        <p>전송 패킷:</p>
-        <code id="packet-log">LF000RF000</code>
+        <p>최근 전송 패킷:</p>
+        <code id="packet-log">stop</code>
       </div>
     </aside>
 
@@ -68,16 +76,12 @@
         <video id="webcam" autoplay playsinline></video>
         
         <div class="overlay-guide-container">
-            <div class="zone forward-zone">
-                <span>🚀 전진 (가속)</span>
+            <div class="zone left-zone">
+                <span>Player 1 Area</span>
             </div>
-            <div class="zone stop-zone">
-                <span>🛑 정지 (Deadzone)</span>
+            <div class="zone right-zone">
+                <span>Player 2 Area</span>
             </div>
-            <div class="zone backward-zone">
-                <span>🔙 후진 (가속)</span>
-            </div>
-            
             <div class="center-line"></div>
         </div>
 
@@ -88,4 +92,3 @@
   
   </body>
 </html>
-
