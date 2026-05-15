@@ -30,6 +30,16 @@ const logCommand = document.getElementById("log-command");
 const logPacket = document.getElementById("packet-log");
 const modelStatus = document.getElementById("model-status");
 
+// 손가락 관절 연결선 정의 (스켈레톤용)
+const HAND_CONNECTIONS = [
+  [0, 1], [1, 2], [2, 3], [3, 4],       // 엄지
+  [0, 5], [5, 6], [6, 7], [7, 8],       // 검지
+  [5, 9], [9, 10], [10, 11], [11, 12],  // 중지
+  [9, 13], [13, 14], [14, 15], [15, 16],// 약지
+  [13, 17], [17, 18], [18, 19], [19, 20],// 새끼
+  [0, 17]                               // 손바닥 밑둥
+];
+
 // 1. 모델 초기화
 async function createHandLandmarker() {
   const vision = await FilesetResolver.forVisionTasks(
@@ -88,25 +98,24 @@ async function predictWebcam() {
   // 상태 초기화
   let leftState = 'none';
   let rightState = 'none';
-  let leftPos = null;
-  let rightPos = null;
+  let leftLandmarks = null;
+  let rightLandmarks = null;
 
   if (results.landmarks) {
     for (const landmarks of results.landmarks) {
       const wrist = landmarks[0]; 
       const visualX = 1 - wrist.x; // 좌우 반전 좌표
-      const visualY = wrist.y;
 
       const gesture = detectGesture(landmarks);
 
       // 화면 왼쪽(0~0.5)은 Left Player
       if (visualX < 0.5) {
         leftState = gesture;
-        leftPos = { x: visualX, y: visualY };
+        leftLandmarks = landmarks;
       } else {
         // 화면 오른쪽(0.5~1)은 Right Player
         rightState = gesture;
-        rightPos = { x: visualX, y: visualY };
+        rightLandmarks = landmarks;
       }
     }
   }
@@ -126,9 +135,9 @@ async function predictWebcam() {
     command = "stop"; 
   }
 
-  // 인디케이터 그리기
-  if (leftPos) drawHandIndicator(leftPos.x, leftPos.y, leftState, "L Player");
-  if (rightPos) drawHandIndicator(rightPos.x, rightPos.y, rightState, "R Player");
+  // 스켈레톤 인디케이터 그리기
+  if (leftLandmarks) drawHandSkeleton(leftLandmarks, leftState, "P1");
+  if (rightLandmarks) drawHandSkeleton(rightLandmarks, rightState, "P2");
 
   updateUI(leftState, rightState, command);
   
@@ -164,27 +173,53 @@ function detectGesture(landmarks) {
   return foldedCount >= 3 ? 'fist' : 'open';
 }
 
-// 손 위치 시각화
-function drawHandIndicator(x, y, state, side) {
-  const px = x * canvas.width;
-  const py = y * canvas.height;
-  
-  ctx.beginPath();
-  ctx.arc(px, py, 20, 0, 2 * Math.PI); 
-  // 보자기: 초록, 주먹: 빨강
-  ctx.fillStyle = state === 'open' ? "#00E676" : "#EA4335"; 
-  ctx.fill();
+// 5. 스켈레톤 그리기 함수
+function drawHandSkeleton(landmarks, state, side) {
+  ctx.save();
+  // 보자기: 초록색 라인, 주먹: 빨간색 라인
+  ctx.strokeStyle = state === 'open' ? "#00E676" : "#EA4335"; 
   ctx.lineWidth = 4;
-  ctx.strokeStyle = "#fff";
+  ctx.lineCap = "round";
+
+  // 뼈대(선) 그리기
+  ctx.beginPath();
+  for (const connection of HAND_CONNECTIONS) {
+    const start = landmarks[connection[0]];
+    const end = landmarks[connection[1]];
+
+    // 화면이 거울 모드이므로 X 좌표는 1에서 빼주어야 함 (1 - x)
+    const startX = (1 - start.x) * canvas.width;
+    const startY = start.y * canvas.height;
+    const endX = (1 - end.x) * canvas.width;
+    const endY = end.y * canvas.height;
+
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(endX, endY);
+  }
   ctx.stroke();
 
-  // 텍스트 라벨
+  // 관절(점) 그리기
+  ctx.fillStyle = "#ffffff";
+  for (const landmark of landmarks) {
+    const px = (1 - landmark.x) * canvas.width;
+    const py = landmark.y * canvas.height;
+    ctx.beginPath();
+    ctx.arc(px, py, 5, 0, 2 * Math.PI);
+    ctx.fill();
+  }
+
+  // 텍스트 라벨 (손목 위치 기준)
+  const wristX = (1 - landmarks[0].x) * canvas.width;
+  const wristY = landmarks[0].y * canvas.height;
   const emoji = state === 'open' ? '🖐️' : '✊';
+  
   ctx.fillStyle = "#fff";
-  ctx.font = "bold 20px Pretendard";
+  ctx.font = "bold 24px Pretendard";
   ctx.shadowColor = "rgba(0,0,0,0.8)";
   ctx.shadowBlur = 4;
-  ctx.fillText(`${side} ${emoji}`, px + 25, py + 8);
+  ctx.fillText(`${side} ${emoji}`, wristX + 25, wristY + 15);
+
+  ctx.restore();
 }
 
 function updateUI(left, right, cmd) {
@@ -241,6 +276,7 @@ btnDisconnect.addEventListener('click', () => {
     }
 });
 
+// ★ 에러 및 함정 해결된 데이터 전송 함수
 async function sendBluetoothData(str) {
   logPacket.innerText = str;
   if (!isConnected || !rxCharacteristic || isSendingData) return;
@@ -248,7 +284,11 @@ async function sendBluetoothData(str) {
   try {
     isSendingData = true; 
     const encoder = new TextEncoder();
-    await rxCharacteristic.writeValue(encoder.encode(str + "\r\n"));
+    
+    // 1. writeValueWithoutResponse 로 변경하여 NotSupportedError 해결
+    // 2. "\r\n"을 "\n"으로 변경하여 마이크로비트에서 글자를 정확히 인식하도록 해결
+    await rxCharacteristic.writeValueWithoutResponse(encoder.encode(str + "\n"));
+    
   } catch (e) {
     console.error("TX Error", e);
   } finally {
