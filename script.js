@@ -1,3 +1,4 @@
+import { CommandSender, resolveCommand } from "./control.mjs";
 import {
   HandLandmarker,
   FilesetResolver
@@ -17,8 +18,7 @@ let results = undefined;
 // 블루투스 변수
 let bluetoothDevice, rxCharacteristic;
 let isConnected = false;
-let isSendingData = false; // 전송 락
-let lastCommand = ""; // 중복 전송 방지용
+let commandSender = null;
 
 // DOM 요소
 const btnConnect = document.getElementById("connect-btn");
@@ -52,7 +52,7 @@ async function createHandLandmarker() {
       delegate: "GPU"
     },
     runningMode: "VIDEO",
-    numHands: 2 // 양쪽 화면에 각각 1개씩 인식하도록 최대 2개로 유지
+    numHands: 2 // 한 사람의 양손 인식
   });
   
   modelStatus.innerText = "AI 모델 준비 완료";
@@ -100,6 +100,7 @@ async function predictWebcam() {
   let rightState = 'none';
   let leftLandmarks = null;
   let rightLandmarks = null;
+  let leftCount = 0, rightCount = 0;
 
   if (results.landmarks) {
     for (const landmarks of results.landmarks) {
@@ -108,44 +109,32 @@ async function predictWebcam() {
 
       const gesture = detectGesture(landmarks);
 
-      // 화면 왼쪽(0~0.5)은 Left Player
+      // 화면 왼쪽 손
       if (visualX < 0.5) {
+        leftCount++;
         leftState = gesture;
         leftLandmarks = landmarks;
       } else {
-        // 화면 오른쪽(0.5~1)은 Right Player
+        // 화면 오른쪽 손
+        rightCount++;
         rightState = gesture;
         rightLandmarks = landmarks;
       }
     }
   }
 
-  // 명령어 판단 로직
-  let command = "stop";
-  if (leftState === 'open' && rightState === 'open') {
-    command = "forward";
-  } else if (leftState === 'fist' && rightState === 'open') {
-    command = "right";
-  } else if (leftState === 'open' && rightState === 'fist') {
-    command = "left";
-  } else if (leftState === 'fist' && rightState === 'fist') {
-    command = "backward";
-  } else {
-    // 하나라도 인식 안 되면 stop
-    command = "stop"; 
-  }
+  // 각 화면 영역에 손이 정확히 하나씩 있어야 조종합니다.
+  if (leftCount !== 1) leftState = 'none';
+  if (rightCount !== 1) rightState = 'none';
+  const command = resolveCommand(leftState, rightState);
 
   // 스켈레톤 인디케이터 그리기
-  if (leftLandmarks) drawHandSkeleton(leftLandmarks, leftState, "P1");
-  if (rightLandmarks) drawHandSkeleton(rightLandmarks, rightState, "P2");
+  if (leftLandmarks) drawHandSkeleton(leftLandmarks, leftState, "왼쪽");
+  if (rightLandmarks) drawHandSkeleton(rightLandmarks, rightState, "오른쪽");
 
   updateUI(leftState, rightState, command);
   
-  // 상태가 바뀌었거나 연결되어 있을 때 데이터를 전송 (블루투스 부하 최소화)
-  if (command !== lastCommand) {
-    sendBluetoothData(command);
-    lastCommand = command;
-  }
+  sendBluetoothData(command);
 
   window.requestAnimationFrame(predictWebcam);
 }
@@ -246,6 +235,12 @@ btnConnect.addEventListener('click', async () => {
     const service = await server.getPrimaryService(BLUETOOTH_UUID_SERVICE);
     rxCharacteristic = await service.getCharacteristic(BLUETOOTH_UUID_RX);
 
+    const characteristic = rxCharacteristic;
+    commandSender = new CommandSender(
+      command => characteristic.writeValueWithoutResponse(new TextEncoder().encode(command + "\n")),
+      command => { logPacket.innerText = command; },
+      error => { console.error("TX Error", error); logPacket.innerText = "전송 실패 · 재시도 중"; }
+    );
     isConnected = true;
     statusBt.innerText = "연결됨: " + bluetoothDevice.name;
     statusBt.classList.add("status-connected");
@@ -266,8 +261,10 @@ function onDisconnected() {
   statusBt.classList.remove("status-connected");
   btnConnect.classList.remove("hidden");
   btnDisconnect.classList.add("hidden");
-  isSendingData = false;
-  lastCommand = "";
+  commandSender?.close();
+  commandSender = null;
+  rxCharacteristic = null;
+  logPacket.innerText = "연결 해제됨";
 }
 
 btnDisconnect.addEventListener('click', () => {
@@ -276,24 +273,9 @@ btnDisconnect.addEventListener('click', () => {
     }
 });
 
-// ★ 에러 및 함정 해결된 데이터 전송 함수
-async function sendBluetoothData(str) {
-  logPacket.innerText = str;
-  if (!isConnected || !rxCharacteristic || isSendingData) return;
-
-  try {
-    isSendingData = true; 
-    const encoder = new TextEncoder();
-    
-    // 1. writeValueWithoutResponse 로 변경하여 NotSupportedError 해결
-    // 2. "\r\n"을 "\n"으로 변경하여 마이크로비트에서 글자를 정확히 인식하도록 해결
-    await rxCharacteristic.writeValueWithoutResponse(encoder.encode(str + "\n"));
-    
-  } catch (e) {
-    console.error("TX Error", e);
-  } finally {
-    isSendingData = false; 
-  }
+// 완료된 쓰기만 전송 내역에 표시합니다. 전송 중 발생한 정지는 먼저 처리합니다.
+function sendBluetoothData(command) {
+  if (isConnected && commandSender) commandSender.request(command);
 }
 
 // 앱 시작

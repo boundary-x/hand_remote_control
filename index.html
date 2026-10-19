@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>바운더리엑스 AI 2인용 RC 컨트롤러</title>
+  <title>바운더리엑스 AI 핸드 로봇 컨트롤러</title>
   
   <link rel="icon" href="https://raw.githubusercontent.com/boundary-x/ai_teachable_machine/refs/heads/main/Favicon.png"/> 
   <link rel="X-icon" href="https://raw.githubusercontent.com/boundary-x/ai_teachable_machine/refs/heads/main/Favicon.png"/> 
@@ -18,7 +18,7 @@
   <header>
     <div class="title">
       <img src="https://raw.githubusercontent.com/boundary-x/ai_voice_recognition/refs/heads/main/boundaryx_logo.png" alt="Logo">
-      AI 핸드포즈 <span class="white-badge">2인용 RC 컨트롤러</span>
+      AI 핸드포즈 <span class="white-badge">핸드 로봇 컨트롤러</span>
     </div>
     <div class="header-right">
         <span id="model-status" class="status-indicator loading">모델 로딩 중...</span>
@@ -32,8 +32,8 @@
         <h3>📘 사용 방법</h3>
         <ul class="manual-list">
           <li><strong>기기 찾기</strong> 버튼으로 블루투스를 연결하세요.</li>
-          <li>화면의 중앙 선을 기준으로 <strong>왼쪽/오른쪽</strong>에 각각 한 명씩 섭니다.</li>
-          <li><strong>보자기/주먹</strong>을 쥐어 RC카를 조종하세요.</li>
+          <li>한 사람이 양손을 보여주세요. 화면의 중앙 선을 기준으로 <strong>왼쪽과 오른쪽에 손을 하나씩</strong> 놓으세요.</li>
+          <li><strong>보자기/주먹</strong>으로 로봇을 조종하세요. 손이 하나라도 인식되지 않으면 정지합니다. 아래 순서는 화면 왼쪽 손 + 오른쪽 손입니다.</li>
           <hr style="margin:8px 0; border:0; border-bottom:1px solid #ddd;">
           <li>🖐️ 보자기 + 🖐️ 보자기 = <strong>전진 (forward)</strong></li>
           <li>✊ 주먹 + 🖐️ 보자기 = <strong>우회전 (right)</strong></li>
@@ -52,11 +52,11 @@
       <div class="panel">
         <h3>🎮 현재 상태</h3>
         <div class="monitor-row">
-            <span class="motor-label">Player 1 (Left)</span>
+            <span class="motor-label">화면 왼쪽 손</span>
             <span id="log-left" class="motor-value">인식 안됨 ❌</span>
         </div>
         <div class="monitor-row">
-            <span class="motor-label">Player 2 (Right)</span>
+            <span class="motor-label">화면 오른쪽 손</span>
             <span id="log-right" class="motor-value">인식 안됨 ❌</span>
         </div>
         <div class="monitor-row" style="background:#e3f2fd; border-color:#90caf9; margin-top: 12px;">
@@ -77,10 +77,10 @@
         
         <div class="overlay-guide-container">
             <div class="zone left-zone">
-                <span>Player 1 Area</span>
+                <span>왼쪽 손 영역</span>
             </div>
             <div class="zone right-zone">
-                <span>Player 2 Area</span>
+                <span>오른쪽 손 영역</span>
             </div>
             <div class="center-line"></div>
         </div>
