@@ -238,7 +238,7 @@ btnConnect.addEventListener('click', async () => {
     const characteristic = rxCharacteristic;
     commandSender = new CommandSender(
       command => characteristic.writeValueWithoutResponse(new TextEncoder().encode(command + "\n")),
-      command => { logPacket.innerText = command; },
+      command => { if (isConnected && characteristic === rxCharacteristic) logPacket.innerText = "전송됨: " + command; },
       error => { console.error("TX Error", error); logPacket.innerText = "전송 실패 · 재시도 중"; }
     );
     isConnected = true;
@@ -276,7 +276,10 @@ btnDisconnect.addEventListener('click', () => {
 // 완료된 쓰기만 전송 내역에 표시합니다. 전송 중 발생한 정지는 먼저 처리합니다.
 function sendBluetoothData(command) {
   if (isConnected && commandSender) commandSender.request(command);
+  else logPacket.innerText = '전송할 데이터: ' + command;
 }
 
 // 앱 시작
 createHandLandmarker();
+
+
