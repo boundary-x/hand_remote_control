@@ -225,7 +225,7 @@ function updateUI(left, right, cmd) {
 /* --- 블루투스 로직 --- */
 btnConnect.addEventListener('click', async () => {
   try {
-    bluetoothDevice = await navigator.bluetooth.requestDevice({
+    bluetoothDevice = await BoardLink.requestDevice({
       filters: [{ namePrefix: "BBC micro:bit" }],
       optionalServices: [BLUETOOTH_UUID_SERVICE]
     });
@@ -233,7 +233,7 @@ btnConnect.addEventListener('click', async () => {
     bluetoothDevice.addEventListener('gattserverdisconnected', onDisconnected);
     const server = await bluetoothDevice.gatt.connect();
     const service = await server.getPrimaryService(BLUETOOTH_UUID_SERVICE);
-    rxCharacteristic = await service.getCharacteristic(BLUETOOTH_UUID_RX);
+    rxCharacteristic = await BoardLink.getCharacteristic(service,BLUETOOTH_UUID_RX);
 
     const characteristic = rxCharacteristic;
     commandSender = new CommandSender(
